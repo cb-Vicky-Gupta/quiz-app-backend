@@ -8,6 +8,8 @@ const QuestionSchema = new mongoose.Schema({
     answer : [{type: String}],
     admin : {type: mongoose.Schema.Types.ObjectId, ref: 'Admin'},
     isActive : {type: Boolean, default: true},
+    quizId : {type : mongoose.Schema.Types.ObjectId, ref: 'Quiz'},
+    QuestionFor: {type: String,enum: ['free', 'paid'],required: true},
     createdDate : {type: Date, default: Date.now},
     createdBy : {type: mongoose.Schema.Types.ObjectId, ref: 'Admin'},
     updatedBy : {type: mongoose.Schema.Types.ObjectId, ref: 'Admin'}
