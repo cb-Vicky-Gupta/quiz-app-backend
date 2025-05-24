@@ -8,6 +8,7 @@ app.use(express.json())
 const adminRouter = require('./routes/admin/index')
 const superRouter = require('./routes/super-admin/index')
 const userRouter = require('./routes/users/index')
+const paymentRouter = require('./routes/payment/route')
 
  
 
@@ -32,5 +33,6 @@ mongoose.connect(url)
 app.use('/v1/admin', adminRouter)
 app.use('/v1/super', superRouter)
 app.use('/v1/user', userRouter)
+app.use('/v1/course', paymentRouter)
 
 module.exports = app;

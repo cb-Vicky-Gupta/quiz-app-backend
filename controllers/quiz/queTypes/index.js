@@ -4,14 +4,14 @@ const Question = require('../../../models/quiz/questions');
 exports.typeController = async(req, res)=>{
     const {title} = req.body;
     try {
-        
-    
     if(!title){
         return res.status(400).json({msg: "Please provide a type of question"})
     }
     const findDuplicate = await questionTypes.findOne({title, createdBy : req.admin.id})
     if(findDuplicate){
+      if(findDuplicate.isActive){
         return res.status(409).json({msg: "This type of question already exists"})
+      }else return res.status(409).json({msg : "This Type of Question is already exist but not Active please contact Super Admin!"})
     }
     const newType = new questionTypes({title, createdBy: req.admin.id, updatedBy: req.admin.id})
     await newType.save()
