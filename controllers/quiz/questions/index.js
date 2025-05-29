@@ -1,12 +1,12 @@
 const questions = require("../../../models/quiz/questions");
 
 exports.addNewQuestion = async(req, res)=>{
-    const {title, type,category,options, answer} = req.body;
+    const {title, type,category,options, answer, quizId, QuestionFor} = req.body;
     if(!title ||!type ||!options ||!answer){
         return res.status(400).json({msg: "Please provide all required fields"})
     }
     try {
-        const newQuestion = new questions({title, type,category, options, answer, createdBy: req.admin.id, updatedBy: req.admin.id})
+        const newQuestion = new questions({title, type,category, options, answer,quizId, QuestionFor, createdBy: req.admin.id, updatedBy: req.admin.id})
         await newQuestion.save()
         return res.status(201).json({msg: "Question created successfully", question : newQuestion})
     } catch (error) {
