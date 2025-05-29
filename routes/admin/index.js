@@ -1,6 +1,6 @@
 const express = require('express')
 const { adminSignupController, adminLoginController} = require('../../controllers/admin/adminController')
-const { categoryController, categoryListController, categoryUpdateController, deactivateCategory } = require('../../controllers/quiz/category')
+const { categoryController, categoryListController, categoryUpdateController, deactivateCategory, getCategoryWithQuestions } = require('../../controllers/quiz/category')
 const { adminmiddleware } = require('../../middleware/admin')
 const { typeController, deleteTypeContoller, getAdminQuestionType } = require('../../controllers/quiz/queTypes')
 const { getTypeController } = require('../../models/quiz/questionTypes/getTypes')

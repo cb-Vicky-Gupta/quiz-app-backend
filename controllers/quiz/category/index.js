@@ -44,7 +44,7 @@ exports.categoryListController = async (req, resp) => {
     const categoriesWithQuestions = await Promise.all(
       categories.map(async (cat) => {
 
-        const noOfQue = await Question.countDocuments({ categoryId: cat._id });
+        const noOfQue = await Question.countDocuments({ category: cat.title });
         return {
           ...cat.toObject(), 
           noOfQue,           
@@ -58,6 +58,7 @@ exports.categoryListController = async (req, resp) => {
     return resp.status(500).json({ msg: "Server Error", error });
   }
 };
+
 
 
 exports.categoryUpdateController = async (req, resp) => {
@@ -116,7 +117,6 @@ exports.deactivateCategory = async(req, res)=>{
         return resp.status(500).json({ msg: "Server Error", error });
     }
 }
-
 // exports.categoryDeleteController = (req, res)=>{
 //     const {id} = req.params;
 //     try {
