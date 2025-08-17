@@ -46,8 +46,8 @@ exports.categoryListController = async (req, resp) => {
 
         const noOfQue = await Question.countDocuments({ category: cat.title });
         return {
-          ...cat.toObject(), 
-          noOfQue,           
+          ...cat.toObject(),
+          noOfQue,
         };
       })
     );
@@ -92,30 +92,30 @@ exports.categoryUpdateController = async (req, resp) => {
   }
 };
 
-exports.deactivateCategory = async(req, res)=>{
-    const {categoryId} = req.params;
-    try {
-        const findCategory = await category.findOneAndUpdate(
-            { _id: categoryId, createdBy: req.admin.id },
-            { isActive: false }
-        );
-        if (!findCategory) return res.status(404).json({ msg: "Category not found" });
-        const updatedCategory = {
-            id: findCategory._id,
-            title: findCategory.title,
-            createdBy: findCategory.createdBy,
-            updatedBy: req.admin.id,
-            createdAt: findCategory.createdDate,
-            isActive: false,
-        };
-        return resp.json({
-            msg: "Category deactivated successfully",
-            category: updatedCategory,
-        });
-    } catch (error) {
-        console.log(error);
-        return resp.status(500).json({ msg: "Server Error", error });
-    }
+exports.deactivateCategory = async (req, res) => {
+  const { categoryId } = req.params;
+  try {
+    const findCategory = await category.findOneAndUpdate(
+      { _id: categoryId, createdBy: req.admin.id },
+      { isActive: false }
+    );
+    if (!findCategory) return res.status(404).json({ msg: "Category not found" });
+    const updatedCategory = {
+      id: findCategory._id,
+      title: findCategory.title,
+      createdBy: findCategory.createdBy,
+      updatedBy: req.admin.id,
+      createdAt: findCategory.createdDate,
+      isActive: false,
+    };
+    return res.json({
+      msg: "Category deactivated successfully",
+      category: updatedCategory,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ msg: "Server Error", error });
+  }
 }
 // exports.categoryDeleteController = (req, res)=>{
 //     const {id} = req.params;
