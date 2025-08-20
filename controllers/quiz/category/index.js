@@ -39,7 +39,7 @@ exports.categoryListController = async (req, resp) => {
   try {
 
     const categories = await category
-      .find({ createdBy: req.admin.id, isActive: true })
+      .find({ createdBy: req.admin.id })
       .sort({ updatedAt: -1 });
     const categoriesWithQuestions = await Promise.all(
       categories.map(async (cat) => {

@@ -11,7 +11,12 @@ exports.typeController = async (req, res) => {
     if (findDuplicate) {
       if (findDuplicate.isActive) {
         return res.status(409).json({ msg: "This type of question already exists." })
-      } else return res.status(409).json({ msg: "This Type of Question is already exist but not Active please contact Super Admin!" })
+      } else {
+        findDuplicate.isActive = true;
+        findDuplicate.updatedBy = req.admin.id;
+        await findDuplicate.save();
+        return res.status(200).json({ msg: "Question type added successfully!", type: findDuplicate });
+      }
     }
     const newType = new questionTypes({ title, createdBy: req.admin.id, updatedBy: req.admin.id })
     await newType.save()
@@ -39,13 +44,11 @@ exports.getAdminQuestionType = async (req, res) => {
     if (!findTypes || findTypes.length === 0) {
       return res.status(404).json({ msg: "Question types not found" });
     }
-
     // Use Promise.all to count questions for each question type
     const responseData = await Promise.all(
       findTypes.map(async (type) => {
         // Count the number of questions for the current type
-        const noOfQue = await Question.countDocuments({ questionTypeId: type._id, createdBy: req.admin.id });
-
+        const noOfQue = await Question.countDocuments({ type: type.title, createdBy: req.admin.id });
         // Return the question type data along with `noOfQue`
         return {
           ...type.toObject(), // Convert Mongoose document to a plain object
