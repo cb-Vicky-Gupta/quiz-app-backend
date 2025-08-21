@@ -10,6 +10,8 @@ const { schemaValidation } = require('../../utils/validation')
 const { registrationSchema, loginValidationSchema, questionsSchema, quizSchema } = require('../../utils/constants')
 const { freeQueAddController, getAdminFreeQue, updateFreeQuestion, deleteFreeQuestion, enableFreeQuestion } = require('../../controllers/quiz/freeQuestions/freeController')
 const { createQuiz, updateQuiz, deleteQuiz, getAllQuiz, getQuizById, retriveQuiz } = require('../../controllers/admin/quiz')
+const upload = require('../../middleware/admin/uploadQuestions')
+const { uploadQuestions } = require('../../controllers/quiz/questions/uploadQuestions')
 
 const router = express.Router()
 
@@ -59,6 +61,9 @@ router.put('/delete-quiz/:quizId', adminmiddleware, deleteQuiz)
 router.put('/retrive-quiz/:quizId', adminmiddleware, retriveQuiz)
 router.get('/get-all-quiz', adminmiddleware, getAllQuiz)
 router.get('/get-quiz/:quizId', adminmiddleware, getQuizById)
+
+//upload question
+router.post("/upload-questions", adminmiddleware, upload.single("file"), uploadQuestions);
 
 
 module.exports = router;
