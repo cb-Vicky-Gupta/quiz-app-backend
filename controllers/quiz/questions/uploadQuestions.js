@@ -48,7 +48,7 @@ exports.uploadQuestions = async (req, res) => {
         }
 
         return res.status(status.created).json({
-            msg: "Upload complete",
+            msg: "Upload completed",
             insertedCount: questionsToInsert.length,
             errors,
         });

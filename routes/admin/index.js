@@ -36,7 +36,7 @@ router.post('/delete-type/:typeId', adminmiddleware, deleteTypeContoller)
 // quiz questions routes
 
 router.post('/add-question', adminmiddleware, addNewQuestion)
-router.get('/get-questions', adminmiddleware, getAllAdminquestions)
+router.post('/get-questions', adminmiddleware, getAllAdminquestions)
 router.get('/get-question/:questionId', adminmiddleware, getAdminQuestionById)
 router.put('/update-question/:questionId', adminmiddleware, updateAdminQuestionById)
 router.delete('/delete-question/:questionId', adminmiddleware, deleteQuestionbyAdmin)
