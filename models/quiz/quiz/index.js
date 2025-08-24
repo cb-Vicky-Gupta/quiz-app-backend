@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 const quiz = new mongoose.Schema({
     instructorName: { type: String, required: true },
     instructorBio: { type: String, required: true },
+    title: { type: String, required: true },
     quizShortDesc: [{
         title: { type: String, required: true },
         content: { type: String, required: true }

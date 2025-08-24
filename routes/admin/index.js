@@ -5,10 +5,9 @@ const { adminmiddleware } = require('../../middleware/admin')
 const { typeController, deleteTypeContoller, getAdminQuestionType } = require('../../controllers/quiz/queTypes')
 const { getTypeController } = require('../../models/quiz/questionTypes/getTypes')
 const { addNewQuestion, getAllAdminquestions, getAdminQuestionById, updateAdminQuestionById, deleteQuestionbyAdmin, transformData } = require('../../controllers/quiz/questions')
-const { soldQuizController } = require('../../controllers/admin/soldQuizes')
 const { schemaValidation } = require('../../utils/validation')
 const { registrationSchema, loginValidationSchema, questionsSchema, quizSchema } = require('../../utils/constants')
-const { freeQueAddController, getAdminFreeQue, updateFreeQuestion, deleteFreeQuestion, enableFreeQuestion } = require('../../controllers/quiz/freeQuestions/freeController')
+
 const { createQuiz, updateQuiz, deleteQuiz, getAllQuiz, getQuizById, retriveQuiz } = require('../../controllers/admin/quiz')
 const upload = require('../../middleware/admin/uploadQuestions')
 const { uploadQuestions } = require('../../controllers/quiz/questions/uploadQuestions')
@@ -44,15 +43,9 @@ router.delete('/delete-question/:questionId', adminmiddleware, deleteQuestionbyA
 //clean data 
 router.put('/transform-data', adminmiddleware, transformData)
 
-// quiz routes
-router.get('/sold-quiz', adminmiddleware, soldQuizController)
 
-// free quiz route
-router.post('/free-add-question', schemaValidation(questionsSchema), adminmiddleware, freeQueAddController)
-router.get('/free-get-question', adminmiddleware, getAdminFreeQue)
-router.put('/free-update-question', schemaValidation(questionsSchema), adminmiddleware, updateFreeQuestion)
-router.put('/free-delete-question/:questionId', adminmiddleware, deleteFreeQuestion)
-router.put('/free-enable-question/:questionId', adminmiddleware, enableFreeQuestion)
+
+
 
 //quiz-crud routes
 router.post('/quiz-create', schemaValidation(quizSchema), adminmiddleware, createQuiz)
