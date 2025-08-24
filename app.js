@@ -10,29 +10,29 @@ const superRouter = require('./routes/super-admin/index')
 const userRouter = require('./routes/users/index')
 const paymentRouter = require('./routes/payment/route')
 
- 
 
- 
+
+
 
 
 // db connection
 const url = process.env.MONGO_URL
 const port = process.env.PORT
 mongoose.connect(url)
-.then(()=>{
-    console.log("Connected to mongoDB")
-    app.listen(port, ()=>{
-        console.log(`Server is running at port ${port}`);
-    });
-})
-.catch((error)=>{
-    console.log("Error in conection to MongoDB",error)
-})
+    .then(() => {
+        console.log("Connected to mongoDB")
+        app.listen(port, () => {
+            console.log(`Server is running at port ${port}`);
+        });
+    })
+    .catch((error) => {
+        console.log("Error in conection to MongoDB", error)
+    })
 
 //main routers
 app.use('/v1/admin', adminRouter)
 app.use('/v1/super', superRouter)
 app.use('/v1/user', userRouter)
-app.use('/v1/course', paymentRouter)
+app.use('/v1/payments', paymentRouter)
 
 module.exports = app;
