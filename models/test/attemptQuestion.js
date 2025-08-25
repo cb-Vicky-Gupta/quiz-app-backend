@@ -5,8 +5,8 @@ const quizAttemptSchema = new mongoose.Schema({
     quizId: { type: mongoose.Schema.Types.ObjectId, ref: "Quiz", required: true },
     questions: [
         {
-            questionId: { type: mongoose.Schema.Types.ObjectId, ref: "Question" },
-            answer: { type: String },
+            questionId: { type: mongoose.Schema.Types.ObjectId, ref: "questions" },
+            answer: [{ type: String }],
             visited: { type: Boolean, default: false },
             correct: { type: Boolean, default: false },
         },

@@ -1,5 +1,5 @@
 const Quiz = require("../../models/quiz/quiz/index");
-const Question = require("../../models/quiz/questions");
+const questions = require("../../models/quiz/questions/index");
 const QuizAttempt = require("../../models/test/attemptQuestion");
 const UserQuestionHistory = require("../../models/test/history");
 
@@ -8,116 +8,228 @@ exports.startQuiz = async (req, res) => {
         const { quizId } = req.params;
         const userId = req.user.id;
 
-        // Check if ongoing attempt exists
+        // ✅ Check if ongoing attempt exists
         let attempt = await QuizAttempt.findOne({
             userId,
             quizId,
             status: "IN_PROGRESS",
             expiresAt: { $gt: new Date() },
+        }).populate({
+            path: "questions.questionId",
+            model: "questions",
+            select: "title options type category"
         });
 
-        if (attempt) return res.json({ attempt, msg: "Resuming quiz" });
+        if (attempt) {
+            return res.json({ attempt, msg: "Resuming quiz" });
+        }
 
-        // If not, create new attempt
-        const quiz = await Quiz.findById(quizId).populate("questions");
-        if (!quiz) return res.status(404).json({ msg: "Quiz not found" });
+        // ✅ Check quiz exists
+        const quiz = await Quiz.findById(quizId);
+        if (!quiz) {
+            return res.status(404).json({ msg: "Quiz not found" });
+        }
 
-        // Filter questions (exclude already attempted/visited ones)
+        // ✅ Get all active questions
+        const allQuestions = await questions.find({ quizId, isActive: true });
+
+        // ✅ Exclude previously attempted questions
         const history = await UserQuestionHistory.find({ userId, quizId });
         const blockedIds = history.map(h => h.questionId.toString());
-        const available = quiz.questions.filter(
+        const available = allQuestions.filter(
             q => !blockedIds.includes(q._id.toString())
         );
 
-        // Take first 10 (or whatever count later)
-        const reserved = available.slice(0, 10).map(q => ({
+        if (available.length < 10) {
+            return res.status(400).json({ msg: "Not enough questions available" });
+        }
+
+        // ✅ Randomly select 10
+        const shuffled = available.sort(() => 0.5 - Math.random());
+        const reserved = shuffled.slice(0, 10).map(q => ({
             questionId: q._id,
         }));
 
+        // ✅ Create new attempt
         attempt = await QuizAttempt.create({
             userId,
             quizId,
             questions: reserved,
-            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            status: "IN_PROGRESS",
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
         });
 
-        return res.json({ attempt, msg: "Quiz started" });
+        // ✅ Populate attempt with question data
+        const populatedAttempt = await QuizAttempt.findById(attempt._id)
+            .populate({
+                path: "questions.questionId",
+                model: "questions",
+                select: "title options type category"
+            });
+
+        return res.json({ attempt: populatedAttempt, msg: "Quiz started" });
+
     } catch (err) {
-        console.error(err);
+        console.error("❌ startQuiz error:", err);
         res.status(500).json({ msg: "Server error" });
     }
 };
 
 
-// exports.submitAnswer = async (req, res) => {
-//     try {
-//         const { attemptId } = req.params;
-//         const { questionId, answer } = req.body;
-//         const userId = req.user.id;
 
-//         let attempt = await QuizAttempt.findById(attemptId).populate("questions.questionId");
-//         if (!attempt) return res.status(404).json({ msg: "Attempt not found" });
-//         if (attempt.status !== "IN_PROGRESS") return res.status(400).json({ msg: "Attempt not active" });
+exports.submitAnswer = async (req, res) => {
+    try {
+        const { questionId, answer, attemptId } = req.body;
+        const userId = req.user.id;
 
-//         // Find question in attempt
-//         const q = attempt.questions.find(q => q.questionId._id.toString() === questionId);
-//         if (!q) return res.status(400).json({ msg: "Question not part of attempt" });
+        // ✅ Load attempt
+        let attempt = await QuizAttempt.findById(attemptId).populate("questions.questionId");
+        if (!attempt) return res.status(404).json({ msg: "Attempt not found" });
+        if (attempt.status !== "IN_PROGRESS") return res.status(400).json({ msg: "Attempt not active" });
+        if (attempt.userId.toString() !== userId) return res.status(403).json({ msg: "Not your attempt" });
 
-//         q.visited = true;
-//         q.answer = answer;
-//         q.correct = q.questionId.correctAnswer === answer;
-//         await attempt.save();
+        // ✅ Find question in attempt
+        const q = attempt.questions.find(q => q.questionId._id.toString() === questionId);
+        if (!q) return res.status(400).json({ msg: "Question not part of attempt" });
 
-//         // Update UserHistory
-//         await UserQuestionHistory.findOneAndUpdate(
-//             { userId, quizId: attempt.quizId, questionId },
-//             { visited: true, answered: true, correct: q.correct },
-//             { upsert: true }
-//         );
+        // ✅ Mark visited & answered
+        q.visited = true;
+        q.answer = Array.isArray(answer) ? answer : [answer]; // normalize to array
 
-//         return res.json({ msg: "Answer saved", attempt });
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ msg: "Server error" });
-//     }
-// };
+        // ✅ Compare with correct answers
+        const correctAnswers = Array.isArray(q.questionId?.answer)
+            ? q.questionId.answer.map(a => a.toString())
+            : [];
+
+        const userAnswers = Array.isArray(q.answer)
+            ? q.answer.map(a => a.toString())
+            : [];
+
+        q.correct =
+            correctAnswers.length > 0 &&
+            correctAnswers.length === userAnswers.length &&
+            correctAnswers.every(ans => userAnswers.includes(ans));
+
+        await attempt.save();
+
+        // ✅ Update UserHistory
+        await UserQuestionHistory.findOneAndUpdate(
+            { userId, quizId: attempt.quizId, questionId },
+            {
+                visited: true,
+                answered: true,
+                correct: q.correct,
+                submittedAnswer: q.answer
+            },
+            { upsert: true, new: true }
+        );
+
+        return res.json({
+            msg: "Answer saved",
+            questionId,
+            correct: q.correct,
+            attemptId: attempt._id
+        });
+
+    } catch (err) {
+        console.error("❌ submitAnswer error:", err);
+        res.status(500).json({ msg: "Server error" });
+    }
+};
 
 
-// exports.completeQuiz = async (req, res) => {
-//     try {
-//         const { attemptId } = req.params;
-//         const attempt = await QuizAttempt.findById(attemptId).populate("questions.questionId");
-//         if (!attempt) return res.status(404).json({ msg: "Attempt not found" });
+// ✅ Complete Quiz Attempt and Show Detailed Results
+exports.completeQuiz = async (req, res) => {
+    try {
+        const { attemptId } = req.body;
+        const attempt = await QuizAttempt.findById(attemptId).populate("questions.questionId");
+        if (!attempt) return res.status(404).json({ msg: "Attempt not found" });
 
-//         attempt.status = "COMPLETED";
-//         attempt.completedAt = new Date();
-//         attempt.score = attempt.questions.filter(q => q.correct).length;
-//         await attempt.save();
+        if (attempt.status === "COMPLETED") {
+            return res.status(400).json({ msg: "Quiz already submitted" });
+        }
 
-//         // TODO: generate PDF/Email report here
+        // ✅ Mark as completed
+        attempt.status = "COMPLETED";
+        attempt.completedAt = new Date();
 
-//         return res.json({ msg: "Quiz completed", attempt });
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ msg: "Server error" });
-//     }
-// };
+        // ✅ Calculate score
+        const score = attempt.questions.filter(q => q.correct).length;
+        attempt.score = score;
 
-// exports.getAttempt = async (req, res) => {
-//     try {
-//         const { attemptId } = req.params;
-//         const attempt = await QuizAttempt.findById(attemptId).populate("questions.questionId");
+        await attempt.save();
 
-//         if (!attempt) return res.status(404).json({ msg: "Attempt not found" });
-//         if (attempt.expiresAt < new Date()) {
-//             attempt.status = "EXPIRED";
-//             await attempt.save();
-//             return res.status(400).json({ msg: "Attempt expired" });
-//         }
+        // ✅ Prepare response with full question + answer details
+        const results = attempt.questions.map(q => ({
+            questionId: q.questionId._id,
+            question: q.questionId.questionText,
+            options: q.questionId.options,
+            correctAnswers: q.questionId.answer,
+            userAnswers: q.answer,
+            isCorrect: q.correct
+        }));
 
-//         return res.json(attempt);
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ msg: "Server error" });
-//     }
-// };
+        return res.json({
+            msg: "Quiz completed",
+            quizId: attempt.quizId,
+            attemptId: attempt._id,
+            score,
+            totalQuestions: attempt.questions.length,
+            results
+        });
+
+    } catch (err) {
+        console.error("❌ completeQuiz error:", err);
+        res.status(500).json({ msg: "Server error" });
+    }
+};
+
+
+// ✅ Get paginated leaderboard for a quiz
+exports.getLeaderboard = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, quizId } = req.body;
+        const skip = (page - 1) * limit;
+
+        // total count of completed attempts
+        const total = await QuizAttempt.countDocuments({
+            quizId,
+            status: "COMPLETED"
+        });
+
+        // leaderboard query
+        const attempts = await QuizAttempt.find({
+            quizId,
+            status: "COMPLETED"
+        })
+            .populate("userId", "firstName lastName email")
+            .sort({ score: -1, completedAt: 1 }) // highest score first
+            .skip(skip)
+            .limit(Number(limit));
+
+        const leaderboard = attempts.map((attempt, index) => ({
+            rank: skip + index + 1, // continuous ranking across pages
+            user: {
+                id: attempt.userId._id,
+                firstName: attempt.userId.firstName,
+                lastName: attempt.userId.lastName,
+                email: attempt.userId.email
+            },
+            score: attempt.score,
+            completedAt: attempt.completedAt
+        }));
+
+        return res.json({
+            quizId,
+            page: Number(page),
+            limit: Number(limit),
+            total,
+            totalPages: Math.ceil(total / limit),
+            leaderboard
+        });
+    } catch (err) {
+        console.error("❌ getLeaderboard error:", err);
+        res.status(500).json({ msg: "Server error" });
+    }
+};
+

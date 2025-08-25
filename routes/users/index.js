@@ -16,10 +16,9 @@ router.post('/get-my-quiz', userMiddlware, getMyQuiz)
 router.post('/get-quiz/:id', userMiddlware, getQuizById)
 
 //attempt quiz route 
-router.post("/:quizId/start", userMiddlware, quizController.startQuiz);
-// router.get("/attempt/:attemptId", userMiddlware, quizController.getAttempt);
-// router.post("/attempt/:attemptId/answer", userMiddlware, quizController.submitAnswer);
-// router.post("/attempt/:attemptId/complete", userMiddlware, quizController.completeQuiz);
-// router.get("/:quizId/leaderboard", userMiddlware, quizController.getLeaderboard);
+router.post("/start/:quizId", userMiddlware, quizController.startQuiz);
+router.post("/attempt/submit-answer", userMiddlware, quizController.submitAnswer);
+router.post("/quiz/final-submit", userMiddlware, quizController.completeQuiz);
+router.post("/quiz/leaderboard", userMiddlware, quizController.getLeaderboard);
 
 module.exports = router;
