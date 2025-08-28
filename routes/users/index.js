@@ -20,5 +20,6 @@ router.post("/start/:quizId", userMiddlware, quizController.startQuiz);
 router.post("/attempt/submit-answer", userMiddlware, quizController.submitAnswer);
 router.post("/quiz/final-submit", userMiddlware, quizController.completeQuiz);
 router.post("/quiz/leaderboard", userMiddlware, quizController.getLeaderboard);
+router.post("/quiz/reports", userMiddlware, quizController.getAllAttemptsQuizesList);
 
 module.exports = router;

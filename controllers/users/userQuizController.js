@@ -233,3 +233,33 @@ exports.getLeaderboard = async (req, res) => {
     }
 };
 
+exports.getAllAttemptsQuizesList = async (req, res) => {
+    const userId = req.user.id;
+    const { page = 1, limit = 10, search = "" } = req.body;
+
+    try {
+
+        const attempts = await QuizAttempt.find({ userId }).populate("quizId");
+
+        const _data = attempts.map(attempt => {
+            return {
+                id: attempt._id,
+                quizId: attempt.quizId._id,
+                title: attempt.quizId.title,
+                userId: userId,
+                status: attempt.status,
+                expiresAt: attempt.expiresAt,
+                startedAt: attempt.startedAt,
+                completedAt: attempt.completedAt,
+                score: attempt.score,
+                quizTitle: attempt.quizId.title
+            };
+        });
+        return res.json({
+            msg: "Success",
+            data: _data
+        });
+    } catch (error) {
+        res.status(500).json({ msg: "Server error" });
+    }
+}
