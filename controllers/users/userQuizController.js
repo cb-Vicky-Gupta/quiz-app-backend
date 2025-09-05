@@ -235,31 +235,58 @@ exports.getLeaderboard = async (req, res) => {
 
 exports.getAllAttemptsQuizesList = async (req, res) => {
     const userId = req.user.id;
-    const { page = 1, limit = 10, search = "" } = req.body;
+    const { page = 1, limit = 10, search = "", quizId = null } = req.body;
+    const skip = (page - 1) * limit;
 
     try {
+        // Base query
+        let query = { userId };
 
-        const attempts = await QuizAttempt.find({ userId }).populate("quizId");
+        // Filter by quizId if provided
+        if (quizId) {
+            query.quizId = quizId;
+        }
 
-        const _data = attempts.map(attempt => {
-            return {
-                id: attempt._id,
-                quizId: attempt.quizId._id,
-                title: attempt.quizId.title,
-                userId: userId,
-                status: attempt.status,
-                expiresAt: attempt.expiresAt,
-                startedAt: attempt.startedAt,
-                completedAt: attempt.completedAt,
-                score: attempt.score,
-                quizTitle: attempt.quizId.title
-            };
-        });
+        // Fetch paginated attempts with optional search filter
+        const attempts = await QuizAttempt.find(query)
+            .populate({
+                path: "quizId",
+                match: search ? { title: { $regex: search, $options: "i" } } : {}, // search by quiz title
+            })
+            .skip(skip)
+            .limit(limit);
+
+        // Filter out attempts where quizId got excluded due to match
+        const filteredAttempts = attempts.filter(a => a.quizId);
+
+        // Count total matching attempts (for pagination)
+        const totalAttempts = await QuizAttempt.countDocuments(query);
+
+        const _data = filteredAttempts.map(attempt => ({
+            id: attempt._id,
+            quizId: attempt.quizId?._id,
+            title: attempt.quizId?.title,
+            userId: userId,
+            status: attempt.status,
+            expiresAt: attempt.expiresAt,
+            startedAt: attempt.startedAt,
+            completedAt: attempt.completedAt,
+            score: attempt.score,
+            quizTitle: attempt.quizId?.title
+        }));
+
         return res.json({
             msg: "Success",
-            data: _data
+            data: _data,
+            pagination: {
+                total: totalAttempts,
+                page: Number(page),
+                limit: Number(limit),
+                totalPages: Math.ceil(totalAttempts / limit)
+            }
         });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ msg: "Server error" });
     }
-}
+};
