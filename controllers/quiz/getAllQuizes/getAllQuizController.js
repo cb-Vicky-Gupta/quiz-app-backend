@@ -1,6 +1,7 @@
 const quiz = require("../../../models/quiz/quiz")
 const { status } = require("../../../utils/statuscodes")
-const Purchase = require("../../../models/payment/index")
+const Purchase = require("../../../models/payment/index");
+const questions = require("../../../models/quiz/questions");
 exports.getAllQuizController = async (req, res) => {
     try {
         // Get 5 random quizzes
@@ -126,8 +127,8 @@ exports.getMyQuiz = async (req, res) => {
     }
 };
 exports.getQuizById = async (req, res) => {
-    const { id } = req.params; // this is quizId
-    const userId = req.user.id; // logged-in user
+    const { id } = req.params;
+    const userId = req.user.id;
 
     try {
         // Step 1: Check if user purchased this quiz
@@ -150,6 +151,10 @@ exports.getQuizById = async (req, res) => {
                 .status(status.notFound)
                 .json({ msg: "Quiz not found" });
         }
+        // const totalRemaining = await questions.countDocuments({ quizId: id });
+        // findQuiz.totalRemaining = totalRemaining;
+        const totalRemaining = await questions.countDocuments({ quizId: id, isActive: true });
+
 
         return res
             .status(status.success)

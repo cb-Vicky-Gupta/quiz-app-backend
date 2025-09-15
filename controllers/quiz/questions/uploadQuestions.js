@@ -1,6 +1,7 @@
 const XLSX = require("xlsx");
 const questions = require("../../../models/quiz/questions");
 const { status } = require("../../../utils/statuscodes");
+const { default: mongoose } = require("mongoose");
 
 exports.uploadQuestions = async (req, res) => {
     try {
@@ -25,6 +26,11 @@ exports.uploadQuestions = async (req, res) => {
                     msg: `Missing required fields (title, type, options, answer)`,
                 });
                 return; // skip this row
+            }
+            console.log(q.quizId)
+            if (!mongoose.Types.ObjectId.isValid(q.quizId)) {
+                errors.push({ row: rowNumber, msg: "Invalid quizId" });
+                return;
             }
             // Prepare question object
             questionsToInsert.push({
@@ -51,10 +57,11 @@ exports.uploadQuestions = async (req, res) => {
             msg: "Upload completed",
             insertedCount: questionsToInsert.length,
             errors,
+            status: true
         });
 
     } catch (error) {
         console.error(error);
-        return res.status(status.serverError).json({ msg: "Server Error" });
+        return res.status(status.serverError).json({ msg: "Server Error", status: false });
     }
 }

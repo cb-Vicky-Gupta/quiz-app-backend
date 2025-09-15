@@ -12,6 +12,7 @@ exports.categoryController = async (req, resp) => {
     const findTitle = await category.findOne({
       title,
       createdBy: req.admin.id,
+
     });
     if (findTitle)
       return resp
@@ -29,6 +30,7 @@ exports.categoryController = async (req, resp) => {
     return resp.json({
       msg: "Category created successfully",
       category: newCategory,
+      status: true,
     });
   } catch (error) {
     console.log(error);
@@ -39,12 +41,12 @@ exports.categoryListController = async (req, resp) => {
   try {
 
     const categories = await category
-      .find({ createdBy: req.admin.id })
+      .find({ createdBy: req.admin.id, isActive: true })
       .sort({ updatedAt: -1 });
     const categoriesWithQuestions = await Promise.all(
       categories.map(async (cat) => {
 
-        const noOfQue = await Question.countDocuments({ category: cat.title });
+        const noOfQue = await Question.countDocuments({ category: cat.title, createdBy: req.admin.id });
         return {
           ...cat.toObject(),
           noOfQue,
@@ -52,7 +54,7 @@ exports.categoryListController = async (req, resp) => {
       })
     );
 
-    return resp.json({ msg: "All Categories", data: categoriesWithQuestions });
+    return resp.json({ msg: "All Categories", data: categoriesWithQuestions, status: true, });
   } catch (error) {
     console.log(error);
     return resp.status(500).json({ msg: "Server Error", error });
@@ -85,6 +87,7 @@ exports.categoryUpdateController = async (req, resp) => {
     return resp.json({
       msg: "Category updated successfully",
       category: updatedCategory,
+      status: true,
     });
   } catch (error) {
     console.log(error);

@@ -8,7 +8,7 @@ exports.addNewQuestion = async (req, res) => {
     try {
         const newQuestion = new questions({ title, type, category, options, answer, quizId, QuestionFor, createdBy: req.admin.id, updatedBy: req.admin.id })
         await newQuestion.save()
-        return res.status(201).json({ msg: "Question created successfully", question: newQuestion })
+        return res.status(201).json({ msg: "Question created successfully", question: newQuestion, status: true })
     } catch (error) {
         console.error(error)
         return res.status(500).json({ msg: "Server Error" })
@@ -52,6 +52,7 @@ exports.getAllAdminquestions = async (req, res) => {
             limit,
             totalPages: Math.ceil(total / limit),
             Allquestions,
+            status: true
         });
     } catch (error) {
         console.error(error);
@@ -102,7 +103,6 @@ exports.transformData = async (req, res) => {
             id: question._id,
             title: question.title,
             type: question.type,
-            typeTitle: question.typeTitle,
             category: question.category,
             categoryTitle: question.categoryTitle,
             options: cleanArrayField(question.options),
@@ -131,7 +131,7 @@ exports.getAdminQuestionById = async (req, res) => {
         if (!question) {
             return res.status(404).json({ msg: "Question not found" })
         }
-        return res.status(200).json({ msg: "Question fetched successfully", question })
+        return res.status(200).json({ msg: "Question fetched successfully", data: question, status: true })
     } catch (error) {
         console.error(error)
         return res.status(500).json({ msg: "Server Error" })
@@ -140,8 +140,9 @@ exports.getAdminQuestionById = async (req, res) => {
 
 exports.updateAdminQuestionById = async (req, res) => {
     const { questionId } = req.params;
-    const { title, type, typeTitle, options, answer } = req.body;
-    if (!questionId || !title || !type || !typeTitle || !options || !answer) {
+    const { title, type, options, answer } = req.body;
+    if (!questionId || !title || !type || !options || !answer) {
+
         return res.status(400).json({ msg: "Please provide all required fields" })
     }
     try {
@@ -149,9 +150,9 @@ exports.updateAdminQuestionById = async (req, res) => {
         if (!findQuestion) {
             return res.status(404).json({ msg: "Question not found" })
         }
-        const updatedQuestion = { title, type, typeTitle, options, answer }
+        const updatedQuestion = { title, type, options, answer }
         const updatedQuestionData = await questions.findByIdAndUpdate(questionId, updatedQuestion, { new: true })
-        return res.status(200).json({ msg: "Question updated successfully", data: updatedQuestionData })
+        return res.status(200).json({ msg: "Question updated successfully", data: updatedQuestionData, status: true })
     } catch (error) {
         console.error(error)
         res.status(500).json({ msg: "server error" })
@@ -168,7 +169,7 @@ exports.deleteQuestionbyAdmin = async (req, res) => {
         if (!findQuestion) {
             return res.status(404).json({ msg: "Question not found" })
         }
-        return res.status(200).json({ msg: "Question deleted successfully" })
+        return res.status(200).json({ msg: "Question deleted successfully", status: true })
     } catch (error) {
         console.error(error)
         return res.status(500).json({ msg: "Server Error" })
