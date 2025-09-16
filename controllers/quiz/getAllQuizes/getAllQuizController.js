@@ -2,6 +2,8 @@ const quiz = require("../../../models/quiz/quiz")
 const { status } = require("../../../utils/statuscodes")
 const Purchase = require("../../../models/payment/index");
 const questions = require("../../../models/quiz/questions");
+const UserQuestionHistory = require("../../../models/test/history");
+const QuizAttempt = require("../../../models/test/attemptQuestion");
 exports.getAllQuizController = async (req, res) => {
     try {
         // Get 5 random quizzes
@@ -135,7 +137,7 @@ exports.getQuizById = async (req, res) => {
         const purchase = await Purchase.findOne({
             userId,
             quizId: id,
-            status: "SUCCESS", // only successful purchases allowed
+            status: "SUCCESS",
         });
 
         if (!purchase) {
@@ -143,22 +145,17 @@ exports.getQuizById = async (req, res) => {
                 .status(status.unauthorized)
                 .json({ msg: "You have not purchased this quiz" });
         }
-
-        // Step 2: Fetch quiz details
         const findQuiz = await quiz.findById(id);
         if (!findQuiz) {
             return res
                 .status(status.notFound)
                 .json({ msg: "Quiz not found" });
         }
-        // const totalRemaining = await questions.countDocuments({ quizId: id });
-        // findQuiz.totalRemaining = totalRemaining;
-        const totalRemaining = await questions.countDocuments({ quizId: id, isActive: true });
-
-
+        const totalQuestionsInQuiz = await questions.countDocuments({ quizId: id, isActive: true });
+        const totalAttemptedQuiz = (await QuizAttempt.find({ quizId: id, userId })).length;
         return res
             .status(status.success)
-            .json({ msg: "Quiz found successfully", data: findQuiz });
+            .json({ msg: "Quiz found successfully", data: findQuiz, totalQuizQuestion: totalQuestionsInQuiz, attemptedQuestions: totalAttemptedQuiz * 10, remainingQuestions: totalQuestionsInQuiz - totalAttemptedQuiz * 10, status: true });
 
     } catch (error) {
         console.error("Error in getQuizById:", error);
