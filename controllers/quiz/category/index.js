@@ -12,6 +12,7 @@ exports.categoryController = async (req, resp) => {
     const findTitle = await category.findOne({
       title,
       createdBy: req.admin.id,
+
     });
     if (findTitle)
       return resp
@@ -29,6 +30,7 @@ exports.categoryController = async (req, resp) => {
     return resp.json({
       msg: "Category created successfully",
       category: newCategory,
+      status: true,
     });
   } catch (error) {
     console.log(error);
@@ -44,15 +46,15 @@ exports.categoryListController = async (req, resp) => {
     const categoriesWithQuestions = await Promise.all(
       categories.map(async (cat) => {
 
-        const noOfQue = await Question.countDocuments({ category: cat.title });
+        const noOfQue = await Question.countDocuments({ category: cat.title, createdBy: req.admin.id });
         return {
-          ...cat.toObject(), 
-          noOfQue,           
+          ...cat.toObject(),
+          noOfQue,
         };
       })
     );
 
-    return resp.json({ msg: "All Categories", data: categoriesWithQuestions });
+    return resp.json({ msg: "All Categories", data: categoriesWithQuestions, status: true, });
   } catch (error) {
     console.log(error);
     return resp.status(500).json({ msg: "Server Error", error });
@@ -85,6 +87,7 @@ exports.categoryUpdateController = async (req, resp) => {
     return resp.json({
       msg: "Category updated successfully",
       category: updatedCategory,
+      status: true,
     });
   } catch (error) {
     console.log(error);
@@ -92,30 +95,30 @@ exports.categoryUpdateController = async (req, resp) => {
   }
 };
 
-exports.deactivateCategory = async(req, res)=>{
-    const {categoryId} = req.params;
-    try {
-        const findCategory = await category.findOneAndUpdate(
-            { _id: categoryId, createdBy: req.admin.id },
-            { isActive: false }
-        );
-        if (!findCategory) return res.status(404).json({ msg: "Category not found" });
-        const updatedCategory = {
-            id: findCategory._id,
-            title: findCategory.title,
-            createdBy: findCategory.createdBy,
-            updatedBy: req.admin.id,
-            createdAt: findCategory.createdDate,
-            isActive: false,
-        };
-        return resp.json({
-            msg: "Category deactivated successfully",
-            category: updatedCategory,
-        });
-    } catch (error) {
-        console.log(error);
-        return resp.status(500).json({ msg: "Server Error", error });
-    }
+exports.deactivateCategory = async (req, res) => {
+  const { categoryId } = req.params;
+  try {
+    const findCategory = await category.findOneAndUpdate(
+      { _id: categoryId, createdBy: req.admin.id },
+      { isActive: false }
+    );
+    if (!findCategory) return res.status(404).json({ msg: "Category not found" });
+    const updatedCategory = {
+      id: findCategory._id,
+      title: findCategory.title,
+      createdBy: findCategory.createdBy,
+      updatedBy: req.admin.id,
+      createdAt: findCategory.createdDate,
+      isActive: false,
+    };
+    return res.json({
+      msg: "Category deactivated successfully",
+      category: updatedCategory,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ msg: "Server Error", error });
+  }
 }
 // exports.categoryDeleteController = (req, res)=>{
 //     const {id} = req.params;

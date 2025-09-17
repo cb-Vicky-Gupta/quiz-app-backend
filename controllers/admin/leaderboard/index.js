@@ -1,5 +1,5 @@
-exports.adminStudentLeaderboard = async(req,res)=>{
-    const {adminId} = req.body;
+exports.adminStudentLeaderboard = async (req, res) => {
+    const { adminId } = req.body;
     const leaderboard = await Admin.aggregate([
         {
             $match: {
@@ -33,5 +33,5 @@ exports.adminStudentLeaderboard = async(req,res)=>{
             $limit: 10
         }
     ]);
-   return res.status(200).json({msg: ""})
+    return res.status(200).json({ msg: "" })
 }
