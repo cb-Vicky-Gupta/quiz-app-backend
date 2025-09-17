@@ -79,7 +79,7 @@ exports.startQuiz = async (req, res) => {
 
 exports.submitAnswer = async (req, res) => {
     try {
-        const { questionId, answer, attemptId } = req.body;
+        const { questionId, answer, attemptId, remainingTime } = req.body;
         const userId = req.user.id;
 
         // ✅ Load attempt
@@ -109,7 +109,7 @@ exports.submitAnswer = async (req, res) => {
             correctAnswers.length > 0 &&
             correctAnswers.length === userAnswers.length &&
             correctAnswers.every(ans => userAnswers.includes(ans));
-
+        attempt.remainingTime = remainingTime;
         await attempt.save();
 
         // ✅ Update UserHistory

@@ -69,6 +69,7 @@ exports.getAllQuizPrivate = async (req, res) => {
             page: parseInt(page),
             limit: parseInt(limit),
             total,
+            totalPages: Math.ceil(total / limit),
             data: allQuizzes,
         });
     } catch (error) {
@@ -121,6 +122,7 @@ exports.getMyQuiz = async (req, res) => {
             page: parseInt(page),
             limit: parseInt(limit),
             total,
+            totalPages: Math.ceil(total / limit),
             data: myQuizzes,
         });
     } catch (error) {
