@@ -253,6 +253,7 @@ exports.getAllAttemptsQuizesList = async (req, res) => {
                 path: "quizId",
                 match: search ? { title: { $regex: search, $options: "i" } } : {}, // search by quiz title
             })
+            .sort({ expiresAt: -1 })
             .skip(skip)
             .limit(limit);
 
