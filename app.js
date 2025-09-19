@@ -9,7 +9,6 @@ const adminRouter = require('./routes/admin/index')
 const superRouter = require('./routes/super-admin/index')
 const userRouter = require('./routes/users/index')
 const paymentRouter = require('./routes/payment/route')
-const reportRoutes = require('./routes/common/index');
 
 
 
@@ -34,6 +33,5 @@ app.use('/v1/admin', adminRouter)
 app.use('/v1/super', superRouter)
 app.use('/v1/user', userRouter)
 app.use('/v1/payments', paymentRouter)
-app.use('/v1', reportRoutes);
 
 module.exports = app;
