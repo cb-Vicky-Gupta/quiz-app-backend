@@ -11,6 +11,7 @@ const { registrationSchema, loginValidationSchema, questionsSchema, quizSchema }
 const { createQuiz, updateQuiz, deleteQuiz, getAllQuiz, getQuizById, retriveQuiz } = require('../../controllers/admin/quiz')
 const upload = require('../../middleware/admin/uploadQuestions')
 const { uploadQuestions } = require('../../controllers/quiz/questions/uploadQuestions')
+const { studentListController } = require('../../controllers/admin/studentList')
 
 const router = express.Router()
 
@@ -55,8 +56,12 @@ router.put('/retrive-quiz/:quizId', adminmiddleware, retriveQuiz)
 router.get('/get-all-quiz', adminmiddleware, getAllQuiz)
 router.get('/get-quiz/:quizId', adminmiddleware, getQuizById)
 
+
 //upload question
 router.post("/upload-questions", adminmiddleware, upload.single("file"), uploadQuestions);
+
+//extra apis routes
+router.post('/get-student-list', adminmiddleware, studentListController)
 
 
 module.exports = router;
