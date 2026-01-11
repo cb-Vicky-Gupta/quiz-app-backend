@@ -7,6 +7,7 @@ const historySchema = new mongoose.Schema({
     visited: { type: Boolean, default: true },
     answered: { type: Boolean, default: false },
     correct: { type: Boolean },
+    submittedAnswer: [{ type: String }],
 });
 
 module.exports = mongoose.model("UserQuestionHistory", historySchema, "UserQuestionHistory");

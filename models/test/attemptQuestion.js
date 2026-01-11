@@ -19,6 +19,7 @@ const quizAttemptSchema = new mongoose.Schema({
     startedAt: { type: Date, default: Date.now },
     expiresAt: { type: Date, required: true },
     completedAt: { type: Date },
+    remainingTime: { type: Number, default: 0 },
     score: { type: Number, default: 0 },
 });
 

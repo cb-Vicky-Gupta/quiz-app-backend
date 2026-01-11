@@ -17,7 +17,7 @@ exports.startQuiz = async (req, res) => {
         }).populate({
             path: "questions.questionId",
             model: "questions",
-            select: "title options type category"
+            select: "title options type category answer"
         });
 
         if (attempt) {
@@ -64,7 +64,7 @@ exports.startQuiz = async (req, res) => {
             .populate({
                 path: "questions.questionId",
                 model: "questions",
-                select: "title options type category"
+                select: "title options type category answer"
             });
 
         return res.json({ attempt: populatedAttempt, msg: "Quiz started" });
@@ -83,10 +83,21 @@ exports.submitAnswer = async (req, res) => {
         const userId = req.user.id;
 
         // ✅ Load attempt
-        let attempt = await QuizAttempt.findById(attemptId).populate("questions.questionId");
+        let attempt = await QuizAttempt.findById(attemptId).populate({
+            path: "questions.questionId",
+            model: "questions",
+            select: "title options type category answer"
+        });
         if (!attempt) return res.status(404).json({ msg: "Attempt not found" });
         if (attempt.status !== "IN_PROGRESS") return res.status(400).json({ msg: "Attempt not active" });
         if (attempt.userId.toString() !== userId) return res.status(403).json({ msg: "Not your attempt" });
+
+        // Check if quiz has expired
+        if (new Date() > attempt.expiresAt) {
+            attempt.status = "EXPIRED";
+            await attempt.save();
+            return res.status(400).json({ msg: "Quiz time expired" });
+        }
 
         // ✅ Find question in attempt
         const q = attempt.questions.find(q => q.questionId._id.toString() === questionId);
@@ -160,9 +171,12 @@ exports.completeQuiz = async (req, res) => {
         await attempt.save();
 
         // ✅ Prepare response with full question + answer details
-        const results = attempt.questions.map(q => ({
+        // Filter out null questions (in case of deleted questions)
+        const validQuestions = attempt.questions.filter(q => q.questionId != null);
+
+        const results = validQuestions.map(q => ({
             questionId: q.questionId._id,
-            question: q.questionId.questionText,
+            question: q.questionId.title,
             options: q.questionId.options,
             correctAnswers: q.questionId.answer,
             userAnswers: q.answer,
@@ -251,9 +265,9 @@ exports.getAllAttemptsQuizesList = async (req, res) => {
         const attempts = await QuizAttempt.find(query)
             .populate({
                 path: "quizId",
-                match: search ? { title: { $regex: search, $options: "i" } } : {}, // search by quiz title
+                match: search ? { title: { $regex: search, $options: "i" } } : {},
             })
-            .sort({ expiresAt: -1 })
+            .sort({ startedAt: -1 })
             .skip(skip)
             .limit(limit);
 
@@ -263,18 +277,52 @@ exports.getAllAttemptsQuizesList = async (req, res) => {
         // Count total matching attempts (for pagination)
         const totalAttempts = await QuizAttempt.countDocuments(query);
 
-        const _data = filteredAttempts.map(attempt => ({
-            id: attempt._id,
-            quizId: attempt.quizId?._id,
-            title: attempt.quizId?.title,
-            userId: userId,
-            status: attempt.status,
-            expiresAt: attempt.expiresAt,
-            startedAt: attempt.startedAt,
-            completedAt: attempt.completedAt,
-            score: attempt.score,
-            quizTitle: attempt.quizId?.title
-        }));
+        const now = new Date();
+
+        const _data = filteredAttempts.map(attempt => {
+            const totalQuestions = attempt.questions?.length || 0;
+            const percentage = totalQuestions > 0
+                ? Math.round((attempt.score / totalQuestions) * 100)
+                : 0;
+
+            // Check if expired (for IN_PROGRESS attempts)
+            const isExpired = attempt.expiresAt && new Date(attempt.expiresAt) < now;
+
+            // Update status if expired but still marked as IN_PROGRESS
+            let currentStatus = attempt.status;
+            if (currentStatus === "IN_PROGRESS" && isExpired) {
+                currentStatus = "EXPIRED";
+            }
+
+            // Determine available actions based on status
+            const actions = {
+                canViewReport: currentStatus === "COMPLETED",
+                canViewAnswers: currentStatus === "COMPLETED",
+                canContinue: currentStatus === "IN_PROGRESS" && !isExpired,
+                isExpired: currentStatus === "EXPIRED" || isExpired
+            };
+
+            // Calculate remaining time for in-progress tests
+            let remainingTime = null;
+            if (currentStatus === "IN_PROGRESS" && !isExpired && attempt.expiresAt) {
+                remainingTime = Math.max(0, Math.floor((new Date(attempt.expiresAt) - now) / 1000));
+            }
+
+            return {
+                id: attempt._id,
+                quizId: attempt.quizId?._id,
+                quizTitle: attempt.quizId?.title,
+                status: currentStatus,
+                score: attempt.score,
+                totalQuestions,
+                percentage,
+                startedAt: attempt.startedAt,
+                completedAt: attempt.completedAt,
+                expiresAt: attempt.expiresAt,
+                remainingTime,
+                actions
+            };
+        });
 
         return res.json({
             msg: "Success",
@@ -304,7 +352,12 @@ exports.userReportController = async (req, res) => {
     try {
         const attempt = await QuizAttempt.findById(attemptId)
             .populate("quizId")
-            .populate("userId");
+            .populate("userId", "firstName lastName email")
+            .populate({
+                path: "questions.questionId",
+                model: "questions",
+                select: "title options answer type category"
+            });
 
         if (!attempt) {
             return res.status(400).json({ msg: "Invalid attemptId" });
@@ -315,25 +368,132 @@ exports.userReportController = async (req, res) => {
             return res.status(403).json({ msg: "Unauthorized access" });
         }
 
-        // ---- Extra Calculations ----
-        const totalQuestions = attempt.questions.length;
-        const attempted = attempt.questions.filter(q => q.visited).length;
-        const correct = attempt.questions.filter(q => q.correct).length;
-        const wrong = attempted - correct;
-        const totalMarks = totalQuestions; // assuming 1 mark per question
-        const percentage = ((correct / totalQuestions) * 100).toFixed(2);
+        // Determine actions based on status
+        const now = new Date();
+        const isExpired = attempt.expiresAt && new Date(attempt.expiresAt) < now;
+        let currentStatus = attempt.status;
+        if (currentStatus === "IN_PROGRESS" && isExpired) {
+            currentStatus = "EXPIRED";
+        }
 
-        // attach these values to response
+        const actions = {
+            canViewReport: currentStatus === "COMPLETED",
+            canViewAnswers: currentStatus === "COMPLETED",
+            canContinue: currentStatus === "IN_PROGRESS" && !isExpired,
+            isExpired: currentStatus === "EXPIRED" || isExpired
+        };
+
+        // If not completed, return limited data with actions
+        if (currentStatus !== "COMPLETED") {
+            return res.status(200).json({
+                msg: "Success",
+                data: {
+                    attemptId: attempt._id,
+                    quizId: attempt.quizId._id,
+                    quizTitle: attempt.quizId.title,
+                    status: currentStatus,
+                    actions,
+                    remainingTime: !isExpired && attempt.expiresAt
+                        ? Math.max(0, Math.floor((new Date(attempt.expiresAt) - now) / 1000))
+                        : 0
+                },
+                status: true
+            });
+        }
+
+        // Filter out null questions (deleted)
+        const validQuestions = attempt.questions.filter(q => q.questionId != null);
+
+        // ---- Calculations ----
+        const totalQuestions = validQuestions.length;
+        const attempted = validQuestions.filter(q => q.visited).length;
+        const correct = validQuestions.filter(q => q.correct).length;
+        const wrong = attempted - correct;
+        const skipped = totalQuestions - attempted;
+        const percentage = totalQuestions > 0 ? ((correct / totalQuestions) * 100).toFixed(2) : 0;
+
+        // Grade calculation
+        let grade = "F";
+        let resultStatus = "FAILED";
+        const percentNum = Number(percentage);
+        if (percentNum >= 90) { grade = "A+"; resultStatus = "PASSED"; }
+        else if (percentNum >= 80) { grade = "A"; resultStatus = "PASSED"; }
+        else if (percentNum >= 70) { grade = "B"; resultStatus = "PASSED"; }
+        else if (percentNum >= 60) { grade = "C"; resultStatus = "PASSED"; }
+        else if (percentNum >= 50) { grade = "D"; resultStatus = "PASSED"; }
+
+        // Calculate gain percentage (improvement from previous attempts on same quiz)
+        const previousAttempts = await QuizAttempt.find({
+            userId,
+            quizId: attempt.quizId._id,
+            status: "COMPLETED",
+            _id: { $ne: attemptId } // Exclude current attempt
+        }).sort({ completedAt: -1 });
+
+        let gainPercentage = null;
+        let previousAverageScore = null;
+        if (previousAttempts.length > 0) {
+            // Calculate average of previous attempts
+            const totalPreviousScore = previousAttempts.reduce((sum, a) => {
+                const questionsCount = a.questions?.length || 1;
+                return sum + ((a.score / questionsCount) * 100);
+            }, 0);
+            previousAverageScore = Math.round(totalPreviousScore / previousAttempts.length);
+            gainPercentage = Math.round(percentNum - previousAverageScore);
+        }
+
+        // Question-wise breakdown for printable report
+        const questionsBreakdown = validQuestions.map((q, index) => ({
+            questionNumber: index + 1,
+            question: q.questionId.title,
+            type: q.questionId.type,
+            category: q.questionId.category,
+            options: q.questionId.options,
+            userAnswer: q.answer || [],
+            correctAnswer: q.questionId.answer,
+            isCorrect: q.correct,
+            isAttempted: q.visited
+        }));
+
+        // Build printable report data
         const reportData = {
-            ...attempt.toObject(),
+            attemptId: attempt._id,
+            user: {
+                id: attempt.userId._id,
+                firstName: attempt.userId.firstName,
+                lastName: attempt.userId.lastName,
+                email: attempt.userId.email,
+                fullName: `${attempt.userId.firstName} ${attempt.userId.lastName}`
+            },
+            quiz: {
+                id: attempt.quizId._id,
+                title: attempt.quizId.title,
+                instructorName: attempt.quizId.instructorName
+            },
+            timing: {
+                startedAt: attempt.startedAt,
+                completedAt: attempt.completedAt,
+                duration: attempt.completedAt && attempt.startedAt
+                    ? Math.round((new Date(attempt.completedAt) - new Date(attempt.startedAt)) / 1000 / 60)
+                    : null // duration in minutes
+            },
             summary: {
                 totalQuestions,
                 attempted,
                 correct,
                 wrong,
-                totalMarks,
-                percentage: Number(percentage)
-            }
+                skipped,
+                percentage: Number(percentage),
+                grade,
+                status: resultStatus,
+                // Gain comparison with previous attempts
+                previousAttempts: previousAttempts.length,
+                previousAverageScore,
+                gainPercentage,
+                isImprovement: gainPercentage !== null ? gainPercentage > 0 : null
+            },
+            actions,
+            questions: questionsBreakdown
         };
 
         return res.status(200).json({ msg: "Success", data: reportData, status: true });

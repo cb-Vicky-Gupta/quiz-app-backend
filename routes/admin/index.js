@@ -20,6 +20,14 @@ const router = express.Router()
 router.post('/signup', schemaValidation(registrationSchema), adminSignupController)
 router.post('/login', schemaValidation(loginValidationSchema), adminLoginController)
 
+// profile routes
+const { getProfile, updateProfile } = require('../../controllers/admin/profileController')
+router.get('/profile', adminmiddleware, getProfile)
+router.put('/update-profile', adminmiddleware, updateProfile)
+
+// dashboard route
+const { getDashboard } = require('../../controllers/admin/dashboardController')
+router.get('/dashboard', adminmiddleware, getDashboard)
 
 // category 
 router.post('/create-category', adminmiddleware, categoryController)
