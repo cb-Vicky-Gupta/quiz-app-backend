@@ -14,7 +14,7 @@ router.get('/get-all-quizes', getAllQuizController)
 router.post('/get-all-quiz', userMiddlware, getAllQuizPrivate)
 router.post('/get-my-quiz', userMiddlware, getMyQuiz)
 router.post('/get-quiz/:id', userMiddlware, getQuizById)
-
+    
 //attempt quiz route 
 router.post("/start/:quizId", userMiddlware, quizController.startQuiz);
 router.post("/attempt/submit-answer", userMiddlware, quizController.submitAnswer);
