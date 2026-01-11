@@ -14,7 +14,6 @@ const paymentRouter = require('./routes/payment/route')
 
 
 
-
 // db connection
 const url = process.env.MONGO_URL
 const port = process.env.PORT

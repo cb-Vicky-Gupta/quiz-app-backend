@@ -253,6 +253,7 @@ exports.getAllAttemptsQuizesList = async (req, res) => {
                 path: "quizId",
                 match: search ? { title: { $regex: search, $options: "i" } } : {}, // search by quiz title
             })
+            .sort({ expiresAt: -1 })
             .skip(skip)
             .limit(limit);
 
@@ -290,3 +291,55 @@ exports.getAllAttemptsQuizesList = async (req, res) => {
         res.status(500).json({ msg: "Server error" });
     }
 };
+
+
+exports.userReportController = async (req, res) => {
+    const userId = req.user.id;
+    const { attemptId } = req.body;
+
+    if (!attemptId) {
+        return res.status(400).json({ msg: "Please provide attemptId" });
+    }
+
+    try {
+        const attempt = await QuizAttempt.findById(attemptId)
+            .populate("quizId")
+            .populate("userId");
+
+        if (!attempt) {
+            return res.status(400).json({ msg: "Invalid attemptId" });
+        }
+
+        // Ensure the logged-in user is the owner of this attempt
+        if (attempt.userId._id.toString() !== userId) {
+            return res.status(403).json({ msg: "Unauthorized access" });
+        }
+
+        // ---- Extra Calculations ----
+        const totalQuestions = attempt.questions.length;
+        const attempted = attempt.questions.filter(q => q.visited).length;
+        const correct = attempt.questions.filter(q => q.correct).length;
+        const wrong = attempted - correct;
+        const totalMarks = totalQuestions; // assuming 1 mark per question
+        const percentage = ((correct / totalQuestions) * 100).toFixed(2);
+
+        // attach these values to response
+        const reportData = {
+            ...attempt.toObject(),
+            summary: {
+                totalQuestions,
+                attempted,
+                correct,
+                wrong,
+                totalMarks,
+                percentage: Number(percentage)
+            }
+        };
+
+        return res.status(200).json({ msg: "Success", data: reportData, status: true });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ msg: "Server error" });
+    }
+};
+
